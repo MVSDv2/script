@@ -9,10 +9,10 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Bot positions (you can modify these later)
 local botPositions = {
-    bot1 = CFrame.new(0, 10, 0),
-    bot2 = CFrame.new(5, 10, 0),
-    bot3 = CFrame.new(10, 10, 0),
-    bot4 = CFrame.new(15, 10, 0)
+    bot1 = CFrame.new(45.2, -114.5, 16.4),
+    bot2 = CFrame.new(45.2, -114.5, 16.4),
+    bot3 = CFrame.new(52.9, -114.5, 16.1),
+    bot4 = CFrame.new(52.9, -114.5, 16.1)
 }
 
 -- Bot states
