@@ -1,0 +1,280 @@
+-- Bot Loader LocalScript - Optimized Version
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Bot positions (you can modify these later)
+local botPositions = {
+    bot1 = CFrame.new(0, 10, 0),
+    bot2 = CFrame.new(5, 10, 0),
+    bot3 = CFrame.new(10, 10, 0),
+    bot4 = CFrame.new(15, 10, 0)
+}
+
+-- Bot states
+local botStates = {
+    bot1 = false,
+    bot2 = false,
+    bot3 = false,
+    bot4 = false
+}
+
+-- Teleport management
+local lastTeleportTime = 0
+local teleportInterval = 0.05 -- 50ms
+local activeBots = {}
+local startTime = tick()
+
+-- Create main GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BotLoader"
+screenGui.ResetOnSpawn = false -- Prevent GUI from disappearing on respawn
+screenGui.Parent = playerGui
+
+-- Main frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
+mainFrame.Active = true -- Make frame active for dragging
+mainFrame.Draggable = true -- Enable built-in dragging
+mainFrame.Parent = screenGui
+
+-- Title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+titleLabel.BorderSizePixel = 1
+titleLabel.BorderColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "BOT LOADER"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.Parent = mainFrame
+
+-- Bot buttons container
+local botContainer = Instance.new("Frame")
+botContainer.Size = UDim2.new(1, -20, 0, 200)
+botContainer.Position = UDim2.new(0, 10, 0, 50)
+botContainer.BackgroundTransparency = 1
+botContainer.Parent = mainFrame
+
+-- Rainbow text effect data
+local rainbowConnections = {}
+
+-- Function to create rainbow text effect (optimized)
+local function createRainbowText(textLabel)
+    if rainbowConnections[textLabel] then
+        rainbowConnections[textLabel]:Disconnect()
+    end
+    
+    rainbowConnections[textLabel] = RunService.RenderStepped:Connect(function()
+        local hue = (tick() * 2) % 1 -- Slower rainbow effect
+        local color = Color3.fromHSV(hue, 1, 1)
+        textLabel.TextColor3 = color
+    end)
+end
+
+-- Function to stop rainbow text effect
+local function stopRainbowText(textLabel)
+    if rainbowConnections[textLabel] then
+        rainbowConnections[textLabel]:Disconnect()
+        rainbowConnections[textLabel] = nil
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end
+
+-- Function to create bot buttons
+local function createBotButton(botName, position)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 40)
+    button.Position = UDim2.new(0, 0, 0, position)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.BorderSizePixel = 1
+    button.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = botName:upper()
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextScaled = true
+    button.Font = Enum.Font.SourceSans
+    button.Parent = botContainer
+    
+    -- Status label
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(0.3, 0, 1, 0)
+    statusLabel.Position = UDim2.new(0.7, 0, 0, 0)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "INACTIVE"
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusLabel.TextScaled = true
+    statusLabel.Font = Enum.Font.SourceSans
+    statusLabel.Parent = button
+    
+    -- Button click handler
+    button.MouseButton1Click:Connect(function()
+        botStates[botName] = not botStates[botName]
+        
+        if botStates[botName] then
+            -- Active state
+            button.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+            statusLabel.Text = "ACTIVE"
+            createRainbowText(statusLabel)
+            activeBots[botName] = true
+        else
+            -- Inactive state
+            button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            statusLabel.Text = "INACTIVE"
+            stopRainbowText(statusLabel)
+            activeBots[botName] = nil
+        end
+    end)
+    
+    return button, statusLabel
+end
+
+-- Create bot buttons
+local botButtons = {}
+for i = 1, 4 do
+    local botName = "bot" .. i
+    local button, statusLabel = createBotButton(botName, (i - 1) * 50)
+    botButtons[botName] = {button = button, statusLabel = statusLabel}
+end
+
+-- Server info container
+local infoContainer = Instance.new("Frame")
+infoContainer.Size = UDim2.new(1, -20, 0, 120)
+infoContainer.Position = UDim2.new(0, 10, 0, 260)
+infoContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+infoContainer.BorderSizePixel = 1
+infoContainer.BorderColor3 = Color3.fromRGB(255, 255, 255)
+infoContainer.Parent = mainFrame
+
+-- Server info title
+local infoTitle = Instance.new("TextLabel")
+infoTitle.Size = UDim2.new(1, 0, 0, 25)
+infoTitle.Position = UDim2.new(0, 0, 0, 0)
+infoTitle.BackgroundTransparency = 1
+infoTitle.Text = "SERVER INFO"
+infoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+infoTitle.TextScaled = true
+infoTitle.Font = Enum.Font.SourceSansBold
+infoTitle.Parent = infoContainer
+
+-- Function to create info labels
+local function createInfoLabel(text, position)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Position = UDim2.new(0, 5, 0, position)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.TextScaled = true
+    label.Font = Enum.Font.SourceSans
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = infoContainer
+    return label
+end
+
+-- Create info labels
+local countryLabel = createInfoLabel("Country: Unknown", 30)
+local serverTimeLabel = createInfoLabel("Server Time: 0s", 50)
+local playerTimeLabel = createInfoLabel("Your Time: 0s", 70)
+local playersLabel = createInfoLabel("Players: " .. #Players:GetPlayers(), 90)
+
+-- Function to format time
+local function formatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+-- Optimized teleport function
+local function handleTeleport()
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+    
+    local currentTime = tick()
+    if currentTime - lastTeleportTime < teleportInterval then
+        return
+    end
+    
+    lastTeleportTime = currentTime
+    local humanoidRootPart = player.Character.HumanoidRootPart
+    
+    -- Check which bot should take priority (you can modify this logic)
+    for botName, _ in pairs(activeBots) do
+        if botPositions[botName] then
+            humanoidRootPart.CFrame = botPositions[botName]
+            break -- Only teleport to one position per frame
+        end
+    end
+end
+
+-- Single optimized update loop
+local lastInfoUpdate = 0
+local infoUpdateInterval = 1 -- Update info every 1 second
+
+local updateConnection = RunService.RenderStepped:Connect(function()
+    local currentTime = tick()
+    
+    -- Handle teleportation for active bots
+    if next(activeBots) then
+        handleTeleport()
+    end
+    
+    -- Update server info (throttled to once per second)
+    if currentTime - lastInfoUpdate >= infoUpdateInterval then
+        lastInfoUpdate = currentTime
+        local playerTime = currentTime - startTime
+        
+        serverTimeLabel.Text = "Server Time: " .. formatTime(workspace.DistributedGameTime)
+        playerTimeLabel.Text = "Your Time: " .. formatTime(playerTime)
+        playersLabel.Text = "Players: " .. #Players:GetPlayers()
+        
+        -- Try to get country info (basic implementation)
+        local success, region = pcall(function()
+            return game:GetService("LocalizationService").RobloxLocaleId
+        end)
+        countryLabel.Text = "Region: " .. (success and region or "Unknown")
+    end
+end)
+
+-- Clean up function
+local function cleanup()
+    if updateConnection then
+        updateConnection:Disconnect()
+    end
+    
+    for _, connection in pairs(rainbowConnections) do
+        if connection then
+            connection:Disconnect()
+        end
+    end
+    
+    rainbowConnections = {}
+    activeBots = {}
+end
+
+-- Clean up when GUI is destroyed
+screenGui.AncestryChanged:Connect(function()
+    if not screenGui.Parent then
+        cleanup()
+    end
+end)
+
+-- Clean up when player leaves
+Players.PlayerRemoving:Connect(function(leavingPlayer)
+    if leavingPlayer == player then
+        cleanup()
+    end
+end)
+
+print("Bot Loader initialized! (Optimized Version)")
